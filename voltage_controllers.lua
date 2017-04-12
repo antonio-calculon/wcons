@@ -72,24 +72,49 @@ local function on_receive_signal_switch ( dev, node, meta, emitter_dev, emitter_
 end
 
 
+local function on_get_formspec_switch ( pos )
+    DEBUG("pos: %s", dump(pos))
+    local meta = minetest.get_meta(pos)
+    local max_voltage = meta:get_int(MAX_VOLTAGE)
+    local fs = "field[0,0;2,1;con_max_voltage;Max volt.;" .. max_voltage .. "]" ..
+        "field_close_on_enter[con_max_voltage;false]"
+    return fs
+end
+
+
+local function on_receive_fields ( pos, fields )
+    local meta = minetest.get_meta(pos)
+    if fields.con_max_voltage then
+        local mv = tonumber(fields.con_max_voltage)
+        if mv then
+            meta:set_int(MAX_VOLTAGE, mv)
+        end
+    end
+end
+
+
 wcons.register_controller({
     name = "wcons:voltage_switch_controller",
+    description = "Simple switch",
     on_init = on_init_switch,
     on_activate = on_activate_switch,
     on_receive_signal = on_receive_signal_switch,
+    on_get_formspec = on_get_formspec_switch,
+    on_receive_fields = on_receive_fields,
 })
 
 
 ----------------------------------------------------------------------
 
--- wcons.register_controller({
---     name = "wcons:voltage_variator_controller",
---     on_init = on_init,
---     on_activate = on_activate,
---     on_receive_signal = on_receive_signal,
---     on_connect = on_connect,
---     on_connected_device = on_connectedc_device,
--- })
+wcons.register_controller({
+    name = "wcons:voltage_dimmer_controller",
+    description = "Dimmer switch",
+    -- on_init = on_init,
+    -- on_activate = on_activate,
+    -- on_receive_signal = on_receive_signal,
+    -- on_connect = on_connect,
+    -- on_connected_device = on_connectedc_device,
+})
 
 -- wcons.register_controller({
 --     name = "wcons:voltage_blink_controller",

@@ -343,9 +343,9 @@ end
 ----------------------------------------------------------------------
 
 
--- wc_start_spark_particles
+-- wc_add_spark_particles
 --
-local function wc_start_spark_particles ( pos, time, player_name )
+local function wc_add_spark_particles ( pos, time, player_name )
     return minetest.add_particlespawner({
         amount = 100,
         time = time,
@@ -384,7 +384,7 @@ local function wc_show_network ( pos, player )
     DEBUG("showing network %d to %s", net.id, player_name)
     chat(player_name, "Network %d (%d devices)", net.id, table_len(net.devices))
     for hpos, dev in pairs(net.devices) do
-        wc_start_spark_particles(dev.pos, 5, player_name)
+        wc_add_spark_particles(dev.pos, 5, player_name)
     end
 end
 
@@ -473,7 +473,7 @@ local function _emit_signal ( net, dev, node, signal, player )
         if target_dev ~= dev then
             local def = target_dev.def
             if def.on_receive_signal then
-                def.on_receive_signal(target_dev, target_node, dev, dev_node, signal)
+                def.on_receive_signal(target_dev, target_node, dev, node, signal)
             end
             local target_meta = minetest.get_meta(target_dev.pos)
             local con_def = registered_controllers[target_meta:get_string("wcons:controller")]
@@ -674,8 +674,8 @@ local function wc_connect_devices ( pos1, pos2, player )
         _join_networks(net1, net2)
         chat(player, "Network %d merged to network %d (%d devices) (%s and %s)", net2.id, net1.id, table_len(net1.devices), devstring(dev1), devstring(dev2))
     end
-    wc_start_spark_particles(dev1.pos, 5, player_name)
-    wc_start_spark_particles(dev2.pos, 5, player_name)
+    wc_add_spark_particles(dev1.pos, 2, player_name)
+    wc_add_spark_particles(dev2.pos, 2, player_name)
     return true
 end
 
@@ -693,6 +693,9 @@ local function wc_register_controller ( def )
         return
     end
     def = table.copy(def)
+    if not def.description then
+        def.description = def.name
+    end
     registered_controllers[def.name] = def
     DEBUG("controller registered: '%s'", def.name)
 end
@@ -723,6 +726,35 @@ local function wc_set_device_controller ( pos, controller, player, params )
 end
 
 
+-- wc_get_controller_formspec
+--
+local function wc_get_controller_formspec ( controller, pos )
+    local def = registered_controllers[controller]
+    if not def then
+        ERROR("unknown controller: '%s'", controller)
+        return ""
+    end
+    if def.on_get_formspec then
+        return def.on_get_formspec(pos)
+    else
+        return "label[0,0;(no config options)]"
+    end
+end
+
+
+local function wc_send_controller_fields ( controller, pos, fields )
+    DEBUG("controller fields: %s", dump(fields))
+    local def = registered_controllers[controller]
+    if not def then
+        ERROR("unknown controller: '%s'", controller)
+        return ""
+    end
+    if def.on_receive_fields then
+        def.on_receive_fields(pos, fields)
+    end
+end
+
+
 ----------------------------------------------------------------------
 
 wcons.registered_devices = registered_devices
@@ -743,3 +775,5 @@ wcons.show_network = wc_show_network
 
 wcons.register_controller = wc_register_controller
 wcons.set_device_controller = wc_set_device_controller
+wcons.get_controller_formspec = wc_get_controller_formspec
+wcons.send_controller_fields = wc_send_controller_fields
