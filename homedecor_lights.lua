@@ -33,7 +33,7 @@ local registered_light_nodes = {}
 
 local function on_receive_signal ( dev, node, emitter_dev, emitter_node, signal )
     DEBUG("signal received: type=%s, value=%s", signal.type, tostring(signal.value))
-    if signal.type ~= "voltage" then
+    if signal.type ~= "wcons:voltage" then
         DEBUG("unknown signal")
         return
     end

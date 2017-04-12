@@ -69,10 +69,14 @@ local function on_use ( stack, user, pointed )
         local dev_name = meta:get_string("dev_name_" .. chan)
         DEBUG("chan %d: %s (%s)", chan, dev_name, pos2str(dev_pos))
         local node = minetest.get_node(dev_pos)
+        if node.name == "ignore" then -- ?? maybe not necessary
+            minetest.chat_send_player(user:get_player_name(), "The device is too far")
+            return stack
+        end
         local def = wcons.registered_device_nodes[node.name]
         if (not def) or def.name ~= dev_name then
             DEBUG("device is not here anymore")
-            meta:set_int("dev_hpos_" .. chan, 0)
+            meta:set_string("dev_pos_" .. chan, "")
             meta:set_string("dev_name_" .. chan, "")
             return stack
         else

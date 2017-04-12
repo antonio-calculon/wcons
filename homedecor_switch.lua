@@ -32,27 +32,7 @@ end
 
 local function on_punch ( pos, node, puncher, pointed )
     wcons.activate_device(pos, puncher, nil)
-    -- local meta = minetest.get_meta(pos)
-    -- local state = meta:get_float("switch_state")
-    -- if state == 0 then
-    --     wcons.emit_signal(pos, { type="voltage", value=100 }, puncher)
-    --     meta:set_float("switch_state", 1)
-    -- else
-    --     wcons.emit_signal(pos, { type="voltage", value=0 }, puncher)
-    --     meta:set_float("switch_state", 0)
-    -- end
 end
-
-
--- local function on_device_connected_switch ( pos, node, dev_pos, dev_node )
---     local meta = minetest.get_meta(pos)
---     local state = meta:get_float("switch_state")
---     if state == 0 then
---         wcons.send_signal(pos, { type="switch", value=0 })
---     else
---         wcons.send_signal(pos, { type="switch", value=15 })
---     end
--- end
 
 
 minetest.override_item("homedecor:light_switch", {
@@ -65,5 +45,4 @@ wcons.register_device({
     name = "wcons:light_switch",
     type = "node",
     nodes = { "homedecor:light_switch" },
-    -- on_device_connected = on_device_connected_switch,
 })

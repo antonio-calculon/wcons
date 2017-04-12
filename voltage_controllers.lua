@@ -38,7 +38,7 @@ end
 
 local function on_activate_switch ( dev, node, meta, player, params)
     local state = meta:get_int(STATE)
-    local signal = { type="voltage" }
+    local signal = { type="wcons:voltage" }
     if state == 0 then
         signal.value = meta:get_int(MAX_VOLTAGE)
         meta:set_int(STATE, 1)
@@ -55,14 +55,14 @@ local function on_receive_signal_switch ( dev, node, meta, emitter_dev, emitter_
     local type = signal.type
     if type == "wcons:request_state" then
         local state = meta:get_int(STATE)
-        local state_signal = { type="voltage" }
+        local state_signal = { type="wcons:voltage" }
         if state == 0 then
             state_signal.value = 0
         else
             state_signal.value = meta:get_int(MAX_VOLTAGE)
         end
         wcons.emit_signal_device(dev.pos, emitter_dev.pos, state_signal, nil) -- player ?
-    elseif type == "voltage" then
+    elseif type == "wcons:voltage" then
         if signal.value == 0 then
             meta:set_int(STATE, 0)
         else
@@ -77,8 +77,6 @@ wcons.register_controller({
     on_init = on_init_switch,
     on_activate = on_activate_switch,
     on_receive_signal = on_receive_signal_switch,
-    -- on_connect = on_connect_switch,
-    -- on_connected_device = on_connected_device_switch,
 })
 
 

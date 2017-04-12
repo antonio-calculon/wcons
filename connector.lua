@@ -1,6 +1,6 @@
 
 local WIRE_ITEM = nil
-local WIRE_COST = 0.2
+local WIRE_COST = 0.1
 
 if minetest.get_modpath("homedecor") then
     WIRE_ITEM = "homedecor:copper_wire"

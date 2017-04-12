@@ -1,4 +1,7 @@
 
+local SAVEPATH = wcons.SAVEPATH
+local SAVE_TIMEOUT = wcons.SAVE_TIMEOUT
+local NET_LIST = SAVEPATH .. "/networks"
 
 local registered_devices = {}
 local registered_device_nodes = {}     -- map <node_name, device_def>
@@ -15,6 +18,7 @@ local hash_pos = minetest.hash_node_position
 local pos2str = minetest.pos_to_string
 local str2pos = minetest.string_to_pos
 
+
 local function chat ( player, ... )
     if not player then
         return
@@ -24,7 +28,8 @@ local function chat ( player, ... )
     minetest.chat_send_player(player, string.format(...))
 end
 
--- I must be stupid, but I can't find how to do that in lua :)
+
+-- I must be stupid but I didn't find a way to do that in lua :)
 local function table_len ( t )
     local l = 0
     for a, b in pairs(t) do
@@ -57,16 +62,12 @@ end
 
 ----------------------------------------------------------------------
 
+local invalid_networks = {}
+
 
 local function wc_invalidate_network ( net_id )
+    invalid_networks[net_id] = true
 end
-
-
-local function wc_invalidate_items ()
-end
-
-
-----------------------------------------------------------------------
 
 
 -- for debug only
@@ -91,14 +92,16 @@ local function get_network_id ( )
 end
 
 
-local function _cleanup_dev ( pos )
+local function _cleanup_dev ( pos, no_invalidate )
     local hpos = hash_pos(pos)
     local dev = dev_map[hpos]
     if dev then
         local net = dev.net
         if net then
             net.devices[hpos] = nil
-            wc_invalidate_network(net.id)
+            if not no_invalidate then
+                wc_invalidate_network(net.id)
+            end
         end
         dev_map[hpos] = nil
     end
@@ -107,46 +110,237 @@ end
 
 local function _check_dev ( dev )
     local node = minetest.get_node(dev.pos)
-    local def = registered_device_nodes[node.name]
-    if def ~= dev.def then
-        WARNING("[TODO] invalid device: %s", devstring(dev))
-        return nil
+    -- we can't check if the node is not available
+    if node.name ~= "ignore" then
+        local def = registered_device_nodes[node.name]
+        if def ~= dev.def then
+            WARNING("[TODO] invalid device: %s", devstring(dev))
+            return nil
+        end
     end
     return node
 end
 
 
-local function _get_dev ( pos )
-    local hpos = hash_pos(pos)
-    local node = minetest.get_node(pos)
-    local def = registered_device_nodes[node.name]
-    local dev = dev_map[hpos]
-    if dev then
-        if dev.def ~= def then
-            WARNING("[TODO] invalid device!")
-            if def then
-                -- [FIXME] do something if dev.net is not nil ?
-                dev.def = def
-            else
-                _cleanup_dev(pos)
-                return nil, nil
-            end
-        end
+local function _get_check_dev ( dev )
+    local node = _check_dev(dev)
+    if node then
         return dev, node
     else
-        if def then
-            local dev = {
-                    def = def,
-                    pos = table.copy(pos),
-                    hpos = hpos,
-                    net = nil,
-                }
-            return dev, node
-        else
-            return nil, nil
-        end
+        return nil, nil
     end
 end
+
+
+local function _get_make_dev ( pos, hpos )
+    local node = minetest.get_node(pos)
+    local def = registered_device_nodes[node.name]
+    if not def then
+        WARNING("[TODO] invalid node at %s", pos2str(pos))
+        return nil, nil
+    end
+    local dev = {
+        def = def,
+        pos = table.copy(pos),
+        hpos = hpos,
+        net = nil,
+    }
+    return dev, node
+end
+
+
+local function _get_dev ( pos )
+    local hpos = hash_pos(pos)
+    local dev = dev_map[hpos]
+    if dev then
+        return _get_check_dev(dev)
+    else
+        return _get_make_dev(pos, hpos)
+    end
+end
+
+
+----------------------------------------------------------------------
+
+
+local function net_filename ( net_id )
+    return "network_" .. net_id
+end
+
+
+local function _load_device ( iter )
+    local l_pos = iter()
+    if not l_pos then
+        return nil
+    end
+    local l_def = iter()
+    local pos = str2pos(l_pos)
+    if not pos then
+        ERROR("invalid pos: '%s'", l_pos)
+        return false
+    end
+    local def = registered_devices[l_def]
+    if not def then
+        ERROR("unknown device: '%s'", l_def)
+        return false
+    end
+    return {
+        pos = pos,
+        hpos = hash_pos(pos),
+        def = def,
+    }
+end
+
+
+local function _load_network ( net_id )
+    local fname = SAVEPATH .. "/" .. net_filename(net_id)
+    DEBUG("loading network %d (%s)", net_id, fname)
+    local f = io.open(fname, "r")
+    if not f then
+        ERROR("file not found: '%s'", fname)
+        return
+    end
+    local devices = {}
+    local net = {
+        id = net_id,
+        devices = devices,
+    }
+    local iter = f:lines()
+    local n_devs = 0
+    while true do
+        local dev = _load_device(iter)
+        if dev == nil then
+            break
+        elseif type(dev) == "table" then
+            dev.net = net
+            n_devs = n_devs + 1
+            devices[dev.hpos] = dev
+        else
+            ERROR("invalid device")
+        end
+    end
+    f:close()
+    if n_devs > 1 then
+        for hpos, dev in pairs(devices) do
+            dev_map[hpos] = dev
+        end
+        networks[net_id] = net
+    else
+        ERROR("empty network: %d", net_id)
+        -- so it will get removed
+        wc_invalidate_network(net_id)
+    end
+end
+
+
+local function wc_load_datas ()
+    DEBUG("loading datas")
+    local f = io.open(NET_LIST, "r")
+    if not f then
+        DEBUG("networks list not found")
+        return
+    end
+    -- hmm, looks like f:read() doesn't work !?
+    local iter = f:lines()
+    while true do
+        local line = iter()
+        if not line then
+            break
+        end
+        local net_id = tonumber(line)
+        if net_id then
+            _load_network(net_id)
+        else
+            ERROR("invalid network id: '%s'", line)
+        end
+    end
+    f:close()
+end
+
+
+local function _save_network ( net )
+    local net_id = net.id
+    local fname = SAVEPATH .. "/" .. net_filename(net_id)
+    local tmpname = fname .. ".tmp"
+    DEBUG("saving network %d in '%s'", net.id, fname)
+    local f = io.open(tmpname, "w")
+    if not f then
+        ERROR("could not open '%s'", tmpname)
+        return
+    end
+    local n_devs = 0
+    local rmdevs = {}
+    for hpos, dev in pairs(net.devices) do
+        if _check_dev(dev) then
+            f:write(pos2str(dev.pos), "\n", dev.def.name, "\n")
+            n_devs = n_devs + 1
+        else
+            table.insert(rmdevs, dev.pos)
+        end
+    end
+    f:close()
+    for _, pos in ipairs(rmdevs) do
+        _cleanup_dev(pos, true)
+    end
+    if n_devs > 1 then
+        os.rename(tmpname, fname)
+        return true
+    else
+        DEBUG("deleting network %d", net_id)
+        -- grrr
+        for hpos, dev in net.devices do
+            dev_map[hpos] = nil
+        end
+        networks[net_id] = nil
+        os.remove(tmpname)
+        return false
+    end
+end
+
+
+-- [FIXME] maybe useless ? we could just take all files in SAVEPATH
+local function _save_networks_list ()
+    local tmpname = NET_LIST .. ".tmp"
+    local f = io.open(tmpname, "w")
+    if not f then
+        ERROR("could not open '%s'", tmpname)
+        return
+    end
+    for net_id, net in pairs(networks) do
+        f:write(net_id, "\n")
+    end
+    f:close()
+    os.rename(tmpname, NET_LIST)
+end
+
+
+local function wc_save_datas ()
+    DEBUG("save datas")
+    local invalid = false
+    local rmnets = {}
+    for net_id,_ in pairs(invalid_networks) do
+        local net = networks[net_id]
+        invalid = true
+        if net then
+            DEBUG("saving network %d", net_id)
+            _save_network(net)
+        else
+            DEBUG("removing network %d", net_id)
+            table.insert(rmnets, net_id)
+        end
+    end
+    for _, net_id in ipairs(rmnets) do
+        os.remove(SAVEPATH .. "/" .. net_filename(net_id))
+    end
+    if invalid then
+        _save_networks_list()
+        invalid_networks = {}
+    end
+    minetest.after(SAVE_TIMEOUT, wc_save_datas)
+end
+
+
+----------------------------------------------------------------------
 
 
 -- wc_start_spark_particles
@@ -537,6 +731,8 @@ wcons.registered_controllers = registered_controllers
 wcons.networks = networks
 wcons.dev_map = dev_map
 
+wcons.load_datas = wc_load_datas
+wcons.save_datas = wc_save_datas
 wcons.register_device = wc_register_device
 wcons.connect_devices = wc_connect_devices
 wcons.activate_device = wc_activate_device

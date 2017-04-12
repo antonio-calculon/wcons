@@ -1,6 +1,4 @@
 
-MODPATH = minetest.get_modpath(minetest.get_current_modname())
-
 
 ----------------------------------------------------------------------
 --                             LOGGING                              --
@@ -28,6 +26,15 @@ end
 -- API
 wcons = {}
 
+local MODPATH = minetest.get_modpath(minetest.get_current_modname())
+
+local WORLDPATH = minetest.get_worldpath()
+local SAVEPATH = WORLDPATH .. "/wcons"
+local SAVE_TIMEOUT = 5
+
+wcons.SAVEPATH = SAVEPATH
+wcons.SAVE_TIMEOUT = SAVE_TIMEOUT
+
 dofile(MODPATH .. "/api.lua")
 dofile(MODPATH .. "/voltage_controllers.lua")
 -- dofile(MODPATH .. "/light_sensor.lua")
@@ -40,3 +47,17 @@ if minetest.get_modpath("homedecor") then
 end
 
 DEBUG("MAX_LIGHT: %d", minetest.LIGHT_MAX)
+
+minetest.mkdir(SAVEPATH)
+minetest.register_on_shutdown(wcons.save_datas)
+minetest.after(SAVE_TIMEOUT, wcons.save_datas)
+
+-- ??
+local LOAD_DONE = false
+minetest.register_on_joinplayer(function(p)
+    if not LOAD_DONE then
+        wcons.load_datas()
+        LOAD_DONE = true
+    end
+end)
+
