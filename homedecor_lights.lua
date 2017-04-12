@@ -31,15 +31,15 @@ local registered_lights = {}
 local registered_light_nodes = {}
 
 
-local function on_receive_signal ( pos, node, emitter_pos, emitter_node, signal )
-    DEBUG("signal received: type=%s, value=%d", signal.type, signal.value)
+local function on_receive_signal ( dev, node, emitter_dev, emitter_node, signal )
+    DEBUG("signal received: type=%s, value=%s", signal.type, tostring(signal.value))
+    if signal.type ~= "voltage" then
+        DEBUG("unknown signal")
+        return
+    end
     local light_def = registered_light_nodes[node.name]
     if not light_def then
         ERROR("light def not found for %s", node.name)
-        return
-    end
-    if signal.type ~= "voltage" then
-        DEBUG("unknown signal")
         return
     end
     local level = signal.value
@@ -49,7 +49,7 @@ local function on_receive_signal ( pos, node, emitter_pos, emitter_node, signal 
     DEBUG("voltage: %d/%d -> %d", level, light_def.max_light, l)
     local new_node = light_def.nodes[l]
     if node.name ~= new_node then
-        minetest.swap_node(pos, { name=new_node })
+        minetest.swap_node(dev.pos, { name=new_node })
     end
 end
 

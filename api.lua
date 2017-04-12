@@ -256,87 +256,38 @@ local function wc_register_device ( def )
 end
 
 
-local function _create_network ( dev1, dev2 )
-    local net_id = get_network_id()
-    DEBUG("creating network %d (devs %s, %s)", net_id, devstring(dev1), devstring(dev2))
-    local net = {
-        id = net_id,
-        devices = {
-            [dev1.hpos] = dev1,
-            [dev2.hpos] = dev2,
-        }
-    }
-    dev1.net = net
-    dev2.net = net
-    networks[net_id] = net
-    dev_map[dev1.hpos] = dev1
-    dev_map[dev2.hpos] = dev2
-    wc_invalidate_network(net_id)
-    return net_id
+local function _foreach_dev (net, func, ...)
+    local invalidate = false
+    for hpos, dev in pairs(net.devices) do
+        local node = _check_dev(dev)
+        if node then
+            func(hpos, dev, node, ...)
+        else
+            WARNING("[TODO] invalid device")
+            invalidate = true
+        end
+    end
+    if invalidate then
+        wc_invalidate_network(net.id)
+    end
 end
 
 
-local function _add_device ( net, dev )
-    local hpos = dev.hpos
-    DEBUG("adding dev %s to network %d", devstring(dev), net.id)
-    net.devices[hpos] = dev
-    dev.net = net
-    dev_map[hpos] = dev
-    wc_invalidate_network(net.id)
-end
-
-
-local function _join_networks ( net1, net2 )
-    DEBUG("joining networks %d and %d", net1.id, net2.id)
-    local devices = net1.devices
-    for hpos, dev in pairs(net2.devices) do
-        dev.net = net1
-        devices[hpos] = dev
-        dev_map[hpos] = dev -- should be useless ??
-    end
-    networks[net2.id] = nil
-    wc_invalidate_network(net1.id)
-    wc_invalidate_network(net2.id)
-    return net1
-end
-
-
--- wc_connect_devices
---
-local function wc_connect_devices ( pos1, pos2, player )
-    local player_name = player and player:get_player_name()
-    local dev1 = _get_dev(pos1)
-    if not dev1 then
-        ERROR("device 1 not found: %s", idstring(devspec1))
-        return nil
-    end
-    local dev2 = _get_dev(pos2)
-    if not dev2 then
-        ERROR("device 2 not found: %s", idstring(devspec2))
-        return nil
-    end
-    -- check networks
-    local net1 = dev1.net
-    local net2 = dev2.net
-    if not (net1 or net2) then
-        local net_id = _create_network(dev1, dev2)
-        chat(player, "Network %d created (%s and %s)", net_id, devstring(dev1), devstring(dev2))
-    elseif net1 and not net2 then
-        _add_device(net1, dev2)
-        chat(player, "%s added to network %d (%d devices)", devstring(dev2), net1.id, table_len(net1.devices))
-    elseif net2 and not net1 then
-        _add_device(net2, dev1)
-        chat(player, "%s added to network %d (%d devices)", devstring(dev1), net2.id, table_len(net2.devices))
-    elseif net1 == net2 then
-        DEBUG("devices already connected")
-        chat(player, "%s and %s are already connected to network %d (%d devices)", devstring(dev1), devstring(dev2), net1.id, table_len(net1.devices))
-    else
-        _join_networks(net1, net2)
-        chat(player, "Network %d merged to network %d (%d devices) (%s and %s)", net2.id, net1.id, table_len(net1.devices), devstring(dev1), devstring(dev2))
-    end
-    wc_start_spark_particles(dev1.pos, 5, player_name)
-    wc_start_spark_particles(dev2.pos, 5, player_name)
-    return true
+local function _emit_signal ( net, dev, node, signal, player )
+    local dev_pos = dev.pos
+    _foreach_dev(net, function(target_hpos, target_dev, target_node)
+        if target_dev ~= dev then
+            local def = target_dev.def
+            if def.on_receive_signal then
+                def.on_receive_signal(target_dev, target_node, dev, dev_node, signal)
+            end
+            local target_meta = minetest.get_meta(target_dev.pos)
+            local con_def = registered_controllers[target_meta:get_string("wcons:controller")]
+            if con_def and con_def.on_receive_signal then
+                con_def.on_receive_signal(target_dev, target_node, target_meta, dev, dev_node, signal)
+            end
+        end
+    end)
 end
 
 
@@ -356,23 +307,63 @@ local function wc_emit_signal ( pos, signal, player )
         end
         return false
     end
-    local rmdevs = {}
-    local dev_pos = dev.pos
-    for target_id, target_dev in pairs(net.devices) do
-        local target_node = _check_dev(target_dev)
-        if target_node then
-            local def = target_dev.def
-            if def.on_receive_signal then
-                def.on_receive_signal(target_dev.pos, target_node, dev_pos, dev_node, signal)
-            end
-        else
-            WARNING("[TODO] invalid device")
-            table.insert(rmdevs, target_dev)
-        end
+    _emit_signal(net, dev, node, signal, player)
+end
+
+
+-- wc_emit_signal_device
+--
+local function wc_emit_signal_device ( pos, target_pos, signal, player )
+    local dev, node = _get_dev(pos)
+    if not dev then
+        ERROR("invalid device: %s", pos2str(pos))
+        return false
     end
-    for _, dev in ipairs(rmdevs) do
-        _cleanup_dev(dev)
+    local net = dev.net
+    if not net then
+        DEBUG("device is not connected")
+        return false
     end
+    local target_dev, target_node = _get_dev(target_pos)
+    if not target_dev then
+        ERROR("invalid target device: %s", pos2str(target_pos))
+        return false
+    end
+    if net ~= target_dev.net then
+        ERROR("devices are not on same network")
+        return false
+    end
+    local target_def = target_dev.def
+    if target_def.on_receive_signal then
+        target_def.on_receive_signal(target_dev, target_node, dev, dev_node, signal)
+    end
+    local target_meta = minetest.get_meta(target_pos)
+    local con_def = registered_controllers[target_meta:get_string("wcons:controller")]
+    if con_def and con_def.on_receive_signal then
+        con_def.on_receive_signal(target_dev, target_node, target_meta, dev, dev_node, signal)
+    end
+end
+
+
+local function _request_device_state ( net, dev, node )
+    _emit_signal(net, dev, node, { type="wcons:request_state" })
+end
+
+
+-- wc_request_device_state
+--
+local function wc_request_device_state ( pos )
+    local dev, dev_node = _get_dev(pos)
+    if not dev then
+        ERROR("device not found at %s", pos2str(pos))
+        return false
+    end
+    local net = dev.net
+    if not net then
+        INFO("this device is not connected")
+        return false
+    end
+    _request_device_state(net, dev, dev_node)
 end
 
 
@@ -404,6 +395,94 @@ local function wc_activate_device ( pos, player, params )
     if devdef.on_activate then
         devdef.on_activate(dev, node, meta, player, params)
     end
+end
+
+
+local function _create_network ( dev1, dev2 )
+    local net_id = get_network_id()
+    DEBUG("creating network %d (devs %s, %s)", net_id, devstring(dev1), devstring(dev2))
+    local net = {
+        id = net_id,
+        devices = {
+            [dev1.hpos] = dev1,
+            [dev2.hpos] = dev2,
+        }
+    }
+    dev1.net = net
+    dev2.net = net
+    networks[net_id] = net
+    dev_map[dev1.hpos] = dev1
+    dev_map[dev2.hpos] = dev2
+    _request_device_state(net, dev1)
+    _request_device_state(net, dev2)
+    wc_invalidate_network(net_id)
+    return net
+end
+
+
+local function _add_device ( net, dev )
+    local hpos = dev.hpos
+    DEBUG("adding dev %s to network %d", devstring(dev), net.id)
+    net.devices[hpos] = dev
+    dev.net = net
+    dev_map[hpos] = dev
+    _request_device_state(net, dev)
+    wc_invalidate_network(net.id)
+end
+
+
+local function _join_networks ( net1, net2 )
+    DEBUG("joining networks %d and %d", net1.id, net2.id)
+    local devices = net1.devices
+    for hpos, dev in pairs(net2.devices) do
+        dev.net = net1
+        devices[hpos] = dev
+        dev_map[hpos] = dev -- should be useless ??
+        _request_device_state(net1, dev)
+    end
+    networks[net2.id] = nil
+    wc_invalidate_network(net1.id)
+    wc_invalidate_network(net2.id)
+    return net1
+end
+
+
+-- wc_connect_devices
+--
+local function wc_connect_devices ( pos1, pos2, player )
+    local player_name = player and player:get_player_name()
+    local dev1 = _get_dev(pos1)
+    if not dev1 then
+        ERROR("device 1 not found: %s", idstring(devspec1))
+        return nil
+    end
+    local dev2 = _get_dev(pos2)
+    if not dev2 then
+        ERROR("device 2 not found: %s", idstring(devspec2))
+        return nil
+    end
+    -- check networks
+    local net1 = dev1.net
+    local net2 = dev2.net
+    if not (net1 or net2) then
+        net1 = _create_network(dev1, dev2)
+        chat(player, "Network %d created (%s and %s)", net1.id, devstring(dev1), devstring(dev2))
+    elseif net1 and not net2 then
+        _add_device(net1, dev2)
+        chat(player, "%s added to network %d (%d devices)", devstring(dev2), net1.id, table_len(net1.devices))
+    elseif net2 and not net1 then
+        _add_device(net2, dev1)
+        chat(player, "%s added to network %d (%d devices)", devstring(dev1), net2.id, table_len(net2.devices))
+    elseif net1 == net2 then
+        DEBUG("devices already connected")
+        chat(player, "%s and %s are already connected to network %d (%d devices)", devstring(dev1), devstring(dev2), net1.id, table_len(net1.devices))
+    else
+        _join_networks(net1, net2)
+        chat(player, "Network %d merged to network %d (%d devices) (%s and %s)", net2.id, net1.id, table_len(net1.devices), devstring(dev1), devstring(dev2))
+    end
+    wc_start_spark_particles(dev1.pos, 5, player_name)
+    wc_start_spark_particles(dev2.pos, 5, player_name)
+    return true
 end
 
 
@@ -443,6 +522,10 @@ local function wc_set_device_controller ( pos, controller, player, params )
     if condef.on_init then
         condef.on_init(dev, node, meta, player, params)
     end
+    local net = dev.net
+    if net then
+        _request_device_state(net, dev, node)
+    end
 end
 
 
@@ -458,6 +541,7 @@ wcons.register_device = wc_register_device
 wcons.connect_devices = wc_connect_devices
 wcons.activate_device = wc_activate_device
 wcons.emit_signal = wc_emit_signal
+wcons.emit_signal_device = wc_emit_signal_device
 wcons.add_spark_particles = wc_add_spark_particles
 wcons.show_network = wc_show_network
 
