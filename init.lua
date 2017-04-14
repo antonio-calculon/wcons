@@ -36,8 +36,8 @@ wcons.SAVEPATH = SAVEPATH
 wcons.SAVE_TIMEOUT = SAVE_TIMEOUT
 
 dofile(MODPATH .. "/api.lua")
+dofile(MODPATH .. "/light_sensor.lua")
 dofile(MODPATH .. "/voltage_controllers.lua")
--- dofile(MODPATH .. "/light_sensor.lua")
 dofile(MODPATH .. "/connector.lua")
 dofile(MODPATH .. "/remote.lua")
 

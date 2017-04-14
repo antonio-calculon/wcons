@@ -46,11 +46,11 @@ end
 local LOG_DOMAIN = minetest.get_current_modname()
 local DEBUG, INFO, ACTION, WARNING, ERROR
 if minetest.get_modpath("logging") then
-    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...)) end
-    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...)) end
-    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...)) end
-    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...)) end
-    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...)) end
+    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...), 1) end
+    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...), 1) end
+    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...), 1) end
+    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...), 1) end
+    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...), 1) end
 else
     DEBUG = function (...)   minetest.log("verbose", "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
     INFO = function (...)    minetest.log("info",    "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
@@ -315,7 +315,6 @@ end
 
 
 local function wc_save_datas ()
-    DEBUG("save datas")
     local invalid = false
     local rmnets = {}
     for net_id,_ in pairs(invalid_networks) do
@@ -478,7 +477,7 @@ local function _emit_signal ( net, dev, node, signal, player )
             local target_meta = minetest.get_meta(target_dev.pos)
             local con_def = registered_controllers[target_meta:get_string("wcons:controller")]
             if con_def and con_def.on_receive_signal then
-                con_def.on_receive_signal(target_dev, target_node, target_meta, dev, dev_node, signal)
+                con_def.on_receive_signal(target_dev, target_node, target_meta, dev, node, signal)
             end
         end
     end)
@@ -501,11 +500,16 @@ local function wc_emit_signal ( pos, signal, player )
         end
         return false
     end
-    _emit_signal(net, dev, node, signal, player)
+    local def = dev.def
+    if def.on_emit_signal then
+        def.on_emit_signal(dev, dev_node, signal)
+    end
+    _emit_signal(net, dev, dev_node, signal, player)
 end
 
 
 -- wc_emit_signal_device
+-- [TODO] call on_emit_signal
 --
 local function wc_emit_signal_device ( pos, target_pos, signal, player )
     local dev, node = _get_dev(pos)
@@ -588,6 +592,27 @@ local function wc_activate_device ( pos, player, params )
     local devdef = dev.def
     if devdef.on_activate then
         devdef.on_activate(dev, node, meta, player, params)
+    end
+end
+
+
+local function wc_update_device ( pos )
+    DEBUG("activate device: %s", pos2str(pos))
+    local dev, node = _get_dev(pos)
+    if not dev then
+        ERROR("no device found at %s", pos2str(pos))
+        return
+    end
+    local def = dev.def
+    if def.on_update then
+        def.on_update(dev, node)
+    end
+    local meta = minetest.get_meta(pos)
+    local condef = registered_controllers[meta:get_string("wcons:controller")]
+    if condef then
+        if condef.on_update then
+            condef.on_update(dev, node, meta)
+        end
     end
 end
 
@@ -743,7 +768,7 @@ end
 
 
 local function wc_send_controller_fields ( controller, pos, fields )
-    DEBUG("controller fields: %s", dump(fields))
+    -- DEBUG("controller fields: %s", dump(fields))
     local def = registered_controllers[controller]
     if not def then
         ERROR("unknown controller: '%s'", controller)
@@ -768,6 +793,7 @@ wcons.save_datas = wc_save_datas
 wcons.register_device = wc_register_device
 wcons.connect_devices = wc_connect_devices
 wcons.activate_device = wc_activate_device
+wcons.update_device = wc_update_device
 wcons.emit_signal = wc_emit_signal
 wcons.emit_signal_device = wc_emit_signal_device
 wcons.add_spark_particles = wc_add_spark_particles

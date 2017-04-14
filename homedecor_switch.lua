@@ -7,11 +7,11 @@
 local LOG_DOMAIN = minetest.get_current_modname()
 local DEBUG, INFO, ACTION, WARNING, ERROR
 if minetest.get_modpath("logging") then
-    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...)) end
-    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...)) end
-    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...)) end
-    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...)) end
-    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...)) end
+    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...), 1) end
+    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...), 1) end
+    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...), 1) end
+    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...), 1) end
+    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...), 1) end
 else
     DEBUG = function (...)   minetest.log("verbose", "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
     INFO = function (...)    minetest.log("info",    "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
@@ -27,6 +27,7 @@ end
 local CONTROLLERS = {
     "wcons:voltage_switch_controller",
     "wcons:voltage_dimmer_controller",
+    "wcons:light_sensor_controller",
 }
 
 local CONTROLLERS_MAP = nil
@@ -107,7 +108,7 @@ local function on_receive_fields ( player, formname, fields )
             return true
         end
     end
-    DEBUG("receive fields: %s - %s", formname, dump(fields))
+    -- DEBUG("receive fields: %s - %s", formname, dump(fields))
     wcons.send_controller_fields(context.controller, context.pos, fields)
     -- [TODO]
     -- if fields.quit then

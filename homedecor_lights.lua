@@ -10,11 +10,11 @@ local LIGHT_MAX = minetest.LIGHT_MAX
 local LOG_DOMAIN = minetest.get_current_modname()
 local DEBUG, INFO, ACTION, WARNING, ERROR
 if minetest.get_modpath("logging") then
-    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...)) end
-    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...)) end
-    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...)) end
-    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...)) end
-    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...)) end
+    DEBUG = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_DEBUG,   string.format(...), 1) end
+    INFO = function (...)    logging.emit(LOG_DOMAIN, logging.LEVEL_INFO,    string.format(...), 1) end
+    ACTION = function (...)  logging.emit(LOG_DOMAIN, logging.LEVEL_ACTION,  string.format(...), 1) end
+    WARNING = function (...) logging.emit(LOG_DOMAIN, logging.LEVEL_WARNING, string.format(...), 1) end
+    ERROR = function (...)   logging.emit(LOG_DOMAIN, logging.LEVEL_ERROR,   string.format(...), 1) end
 else
     DEBUG = function (...)   minetest.log("verbose", "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
     INFO = function (...)    minetest.log("info",    "[" .. LOG_DOMAIN .. "] " .. string.format(...)) end
@@ -32,21 +32,24 @@ local registered_light_nodes = {}
 
 
 local function on_receive_signal ( dev, node, emitter_dev, emitter_node, signal )
-    DEBUG("signal received: type=%s, value=%s", signal.type, tostring(signal.value))
+    -- DEBUG("signal received: type=%s, value=%s", signal.type, tostring(signal.value))
     if signal.type ~= "wcons:voltage" then
-        DEBUG("unknown signal")
+        -- DEBUG("unknown signal")
         return
     end
     local light_def = registered_light_nodes[node.name]
     if not light_def then
-        ERROR("light def not found for %s", node.name)
+        -- [FIXME] anything we can do about this ?
+        if node.name ~= "ignore" then
+            ERROR("light def not found for %s", node.name)
+        end
         return
     end
     local level = signal.value
     local l = math.floor(level * light_def.max_light / 100)
     if l < 0 then l = 0
     elseif l > LIGHT_MAX then l = LIGHT_MAX end
-    DEBUG("voltage: %d/%d -> %d", level, light_def.max_light, l)
+    -- DEBUG("voltage: %d/%d -> %d", level, light_def.max_light, l)
     local new_node = light_def.nodes[l]
     if node.name ~= new_node then
         minetest.swap_node(dev.pos, { name=new_node })
@@ -97,7 +100,7 @@ wcons.register_light_device = function ( base_node, existing_nodes )
     end
     -- register device
     wcons.register_device({
-        name = "wcons:base_name",
+        name = "wcons:" .. base_name,
         type = "node",
         nodes = node_list,
         on_receive_signal = on_receive_signal,
