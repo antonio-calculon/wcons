@@ -36,11 +36,16 @@ wcons.SAVEPATH = SAVEPATH
 wcons.SAVE_TIMEOUT = SAVE_TIMEOUT
 
 dofile(MODPATH .. "/api.lua")
+dofile(MODPATH .. "/lighting.lua")
 dofile(MODPATH .. "/light_sensor.lua")
 dofile(MODPATH .. "/blinker.lua")
 dofile(MODPATH .. "/voltage_controllers.lua")
 dofile(MODPATH .. "/connector.lua")
 dofile(MODPATH .. "/remote.lua")
+
+if minetest.get_modpath("default") then
+    dofile(MODPATH .. "/default_lights.lua")
+end
 
 if minetest.get_modpath("homedecor") then
     dofile(MODPATH .. "/homedecor_switch.lua")
