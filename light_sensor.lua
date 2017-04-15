@@ -35,6 +35,8 @@ local CON_DEFAULTS = {
     [CON_VARIABLE] = false,
 }
 
+local PLAYER_CONTEXT = {}
+
 
 ----------------------------------------------------------------------
 --                             LOGGING                              --
@@ -81,6 +83,30 @@ end
 local function on_punch ( pos, node, puncher, pointed )
     -- DEBUG("punch: %s", dump(pos))
     wcons.activate_device(pos, puncher, nil)
+end
+
+
+local function on_rightclick ( pos, node, clicker, itemstack, pointed )
+    local name = clicker:get_player_name()
+    PLAYER_CONTEXT[name] = {
+        pos = pos,
+    }
+    local fs = "size[8,8]label[2,0;Light sensor]button_exit[7,0;1,1;but_close;X]"
+    fs = fs ..
+        "container[1,2]" ..
+        wcons.get_controller_formspec("wcons:light_sensor_controller", pos) ..
+        "container_end[]"
+    minetest.show_formspec(name, "wcons:light_sensor_config", fs)
+end
+
+
+local function on_receive_fields ( player, formname, fields )
+    if formname ~= "wcons:light_sensor_config" then
+        return false
+    end
+    local context = PLAYER_CONTEXT[player:get_player_name()]
+    wcons.send_controller_fields("wcons:light_sensor_controller", context.pos, fields)
+    return true
 end
 
 
@@ -344,7 +370,7 @@ for mode, mode_name in pairs(MODE_NAMES) do
         walkable = false,
         after_place_node = after_place_node,
         on_punch = on_punch,
-        -- on_timer = on_timer,
+        on_rightclick = on_rightclick,
     }
     if mode ~= MODE_AUTO then
         def.drop = "wcons:light_sensor_auto"
@@ -354,6 +380,8 @@ for mode, mode_name in pairs(MODE_NAMES) do
     MODE_ITEMS[mode] = name
 end
 
+
+minetest.register_on_player_receive_fields(on_receive_fields)
 
 minetest.register_abm({
     label = "Light sensor",
