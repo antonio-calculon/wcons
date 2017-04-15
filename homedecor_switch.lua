@@ -28,6 +28,7 @@ local CONTROLLERS = {
     "wcons:voltage_switch_controller",
     "wcons:voltage_dimmer_controller",
     "wcons:light_sensor_controller",
+    "wcons:blinker_controller",
 }
 
 local CONTROLLERS_MAP = nil

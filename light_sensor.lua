@@ -74,10 +74,6 @@ end
 
 local function after_place_node ( pos, placer, stack, pointed )
     wcons.set_device_controller(pos, "wcons:light_sensor_controller", placer, nil)
-    -- local timer = minetest.get_node_timer(pos)
-    -- timer:start(2)
-    local meta = minetest.get_meta(pos)
-    meta:set_string("foo", "bar")
     return stack
 end
 
