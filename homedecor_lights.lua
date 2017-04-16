@@ -13,3 +13,19 @@ wcons.register_light_device("homedecor:glowlight_quarter", { "homedecor:glowligh
 wcons.register_light_device("homedecor:glowlight_small_cube", { "homedecor:glowlight_small_cube" })
 
 wcons.register_light_device("lavalamp:lavalamp", { "lavalamp:lavalamp_off", "lavalamp:lavalamp" })
+
+wcons.register_light_device("homedecor:standing_lamp_off", {
+    "homedecor:standing_lamp_off",
+    "homedecor:standing_lamp_low",
+    "homedecor:standing_lamp_med",
+    "homedecor:standing_lamp_hi",
+    "homedecor:standing_lamp_max",
+})
+
+wcons.register_light_device("homedecor:table_lamp_off", {
+    "homedecor:table_lamp_off",
+    "homedecor:table_lamp_low",
+    "homedecor:table_lamp_med",
+    "homedecor:table_lamp_hi",
+    "homedecor:table_lamp_max",
+})

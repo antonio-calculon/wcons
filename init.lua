@@ -73,15 +73,8 @@ end
 
 DEBUG("MAX_LIGHT: %d", minetest.LIGHT_MAX)
 
+-- load/save
 minetest.mkdir(SAVEPATH)
 minetest.register_on_shutdown(wcons.save_datas)
 minetest.after(SAVE_TIMEOUT, wcons.save_datas)
-
--- ??
-local LOAD_DONE = false
-minetest.register_on_joinplayer(function(p)
-    if not LOAD_DONE then
-        wcons.load_datas()
-        LOAD_DONE = true
-    end
-end)
+wcons.load_datas()

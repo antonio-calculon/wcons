@@ -113,3 +113,13 @@ minetest.register_tool("wcons:connector", {
     on_secondary_use = on_connector_use,
     on_place = on_connector_use,
 })
+
+minetest.register_craft({
+    type = "shaped",
+    output = "wcons:connector",
+    recipe = {
+        { "", "",                     "" },
+        { "", "default:copper_ingot", "" },
+        { "", "default:stick",        "" },
+    },
+})
