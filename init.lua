@@ -35,6 +35,25 @@ local SAVE_TIMEOUT = 5
 wcons.SAVEPATH = SAVEPATH
 wcons.SAVE_TIMEOUT = SAVE_TIMEOUT
 
+-- register the spool of copper wire if we don't have it
+-- (I made the recipe simpler to not have to redefine the whole
+-- oil/paraffin/plastic chain)
+if not minetest.registered_items["homedecor:copper_wire"] then
+    minetest.register_craftitem(":homedecor:copper_wire", {
+        description = "Spool of copper wire",
+        inventory_image = "wcons_copper_wire.png",
+    })
+    minetest.register_craft({
+        type = "shaped",
+        output = "homedecor:copper_wire",
+        recipe = {
+            { "",                     "default:paper", "" },
+            { "default:copper_ingot", "default:paper", "default:copper_ingot" },
+            { "",                     "default:paper", "" },            
+        }
+    })
+end
+
 dofile(MODPATH .. "/api.lua")
 dofile(MODPATH .. "/lighting.lua")
 dofile(MODPATH .. "/light_sensor.lua")
@@ -66,4 +85,3 @@ minetest.register_on_joinplayer(function(p)
         LOAD_DONE = true
     end
 end)
-

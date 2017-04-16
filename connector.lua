@@ -2,9 +2,9 @@
 local WIRE_ITEM = nil
 local WIRE_COST = 0.1
 
-if minetest.get_modpath("homedecor") then
+-- if minetest.get_modpath("homedecor") then
     WIRE_ITEM = "homedecor:copper_wire"
-end
+-- end
 
 local WIRE_ITEM_NAME = minetest.registered_items[WIRE_ITEM].description
 
