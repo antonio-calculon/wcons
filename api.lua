@@ -288,7 +288,7 @@ local function _save_network ( net )
     else
         DEBUG("deleting network %d", net_id)
         -- grrr
-        for hpos, dev in net.devices do
+        for hpos, dev in pairs(net.devices) do
             dev_map[hpos] = nil
         end
         networks[net_id] = nil
