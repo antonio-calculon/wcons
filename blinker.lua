@@ -287,6 +287,19 @@ for mode, mode_name in pairs(MODE_NAMES) do
 end
 
 
+-- [FIXME] add an alternate recipe if homedecor is not here ?
+if minetest.get_modpath("homedecor") then
+    minetest.register_craft({
+        type = "shaped",
+        output = "wcons:blinker_auto",
+        recipe = {
+            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "homedecor:plastic_sheeting" },
+            { "homedecor:copper_wire",      "homedecor:ic",               "homedecor:copper_wire" },
+            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "homedecor:plastic_sheeting" },
+        },
+    })
+end
+
 wcons.register_device({
     name = "wcons:blinker",
     nodes = nodes_list,

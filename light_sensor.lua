@@ -383,6 +383,19 @@ end
 
 minetest.register_on_player_receive_fields(on_receive_fields)
 
+-- [FIXME] add an alternate recipe if homedecor is not here ?
+if minetest.get_modpath("homedecor") then
+    minetest.register_craft({
+        type = "shaped",
+        output = "wcons:light_sensor_auto",
+        recipe = {
+            { "homedecor:plastic_sheeting", "default:glass",              "homedecor:plastic_sheeting" },
+            { "homedecor:copper_wire",      "homedecor:ic",               "homedecor:copper_wire" },
+            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "homedecor:plastic_sheeting" },
+        },
+    })
+end
+
 minetest.register_abm({
     label = "Light sensor",
     nodenames = { "wcons:light_sensor_auto" },

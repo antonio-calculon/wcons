@@ -128,3 +128,16 @@ for chan = 1, N_CHANNELS do
     CHANNEL_ITEM[chan] = name
     ITEM_CHANNEL[name] = chan
 end
+
+-- [FIXME] add an alternate recipe if homedecor is not here ?
+if minetest.get_modpath("homedecor") then
+    minetest.register_craft({
+        type = "shaped",
+        output = "wcons:remote_1",
+        recipe = {
+            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "" },
+            { "homedecor:copper_wire",      "homedecor:ic",               "" },
+            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "" },
+        },
+    })
+end
