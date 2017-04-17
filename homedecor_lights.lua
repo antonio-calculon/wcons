@@ -39,3 +39,8 @@ minetest.override_item("wcons:ceiling_fan_0", {
 		"homedecor_ceiling_fan_sides.png",
     },
 })
+
+minetest.override_item("homedecor:fishtank", {
+    light_source = 4,
+})
+wcons.register_light_device("homedecor:fishtank", { "homedecor:fishtank" })
