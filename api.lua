@@ -705,6 +705,24 @@ local function wc_connect_devices ( pos1, pos2, player )
 end
 
 
+-- wc_trigger_device_timer
+--
+local function wc_trigger_device_timer ( pos, elapsed )
+    local dev, node = _get_dev(pos)
+    if not dev then
+        ERROR("not a device")
+        return
+    end
+    local meta = minetest.get_meta(pos)
+    local condef = registered_controllers[meta:get_string("wcons:controller")]
+    if condef and condef.on_timer then
+        return condef.on_timer(pos, elapsed)
+    else
+        return false -- ??
+    end
+end
+
+
 ----------------------------------------------------------------------
 --                           CONTROLLERS                            --
 ----------------------------------------------------------------------
@@ -794,6 +812,7 @@ wcons.register_device = wc_register_device
 wcons.connect_devices = wc_connect_devices
 wcons.activate_device = wc_activate_device
 wcons.update_device = wc_update_device
+wcons.trigger_device_timer = wc_trigger_device_timer
 wcons.emit_signal = wc_emit_signal
 wcons.emit_signal_device = wc_emit_signal_device
 wcons.add_spark_particles = wc_add_spark_particles

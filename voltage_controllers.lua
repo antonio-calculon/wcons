@@ -104,6 +104,8 @@ wcons.register_controller({
 
 
 ----------------------------------------------------------------------
+--                          DIMMER SWITCH                           --
+----------------------------------------------------------------------
 
 local DIMMER_STATE       = "wcons:controller_dimmer:state"
 local DIMMER_MIN_VOLTAGE = "wcons:controller_dimmer:min_voltage"
@@ -196,4 +198,108 @@ wcons.register_controller({
     on_receive_fields = on_receive_fields_dimmer,
 })
 
+
 ----------------------------------------------------------------------
+--                           TIMER SWITCH                           --
+----------------------------------------------------------------------
+
+local TIMER_STATE       = "wcons:controller_timer:state"
+local TIMER_MAX_VOLTAGE = "wcons:controller_timer:max_voltage"
+local TIMER_TIMEOUT     = "wcons:controller_timer:timeout"
+
+
+local function on_init_timer ( dev, node, meta, player, params )
+    local max = meta:get_int(TIMER_MAX_VOLTAGE)
+    local timeout = meta:get_int(TIMER_TIMEOUT)
+    meta:set_int(TIMER_STATE, 0)
+    if max == 0 then
+        meta:set_int(TIMER_MAX_VOLTAGE, 100) 
+    end
+    if timeout == 0 then
+        meta:set_float(TIMER_TIMEOUT, 10)
+    end
+end
+
+
+local function on_timer_timer ( pos )
+    local signal = {
+        type = "wcons:voltage",
+        value = 0,
+    }
+    DEBUG("timer end")
+    wcons.emit_signal(pos, signal, nil)
+    local meta = minetest.get_meta(pos)
+    meta:set_int(TIMER_STATE, 0)
+    return false
+end
+
+
+local function on_activate_timer ( dev, node, meta, player, params)
+    local signal = {
+        type = "wcons:voltage",
+        value = meta:get_int(TIMER_MAX_VOLTAGE),
+    }
+    wcons.emit_signal(dev.pos, signal, player)
+    local timeout = meta:get_float(TIMER_TIMEOUT)
+    local timer = minetest.get_node_timer(dev.pos)
+    DEBUG("timer activated (%.2fs) !", timeout)
+    timer:start(timeout)
+    meta:set_int(TIMER_STATE, 1)
+end
+
+
+local function on_receive_signal_timer ( dev, node, meta, emitter_dev, emitter_node, signal )
+    -- DEBUG("controller timer received signal")
+    local type = signal.type
+    if type == "wcons:request_state" then
+        local state = meta:get_int(TIMER_STATE)
+        local state_signal = { type="wcons:voltage" }
+        if state == 0 then
+            state_signal.value = 0
+        else
+            state_signal.value = meta:get_int(TIMER_MAX_VOLTAGE)
+        end
+        wcons.emit_signal_device(dev.pos, emitter_dev.pos, state_signal, nil) -- player ?
+    elseif type == "wcons:voltage" then
+        if signal.value == 0 then
+            meta:set_int(TIMER_STATE, 0)
+        else
+            meta:set_int(TIMER_STATE, 1)
+        end
+    end
+end
+
+
+local function on_get_formspec_timer ( pos )
+    local meta = minetest.get_meta(pos)
+    local max_voltage = meta:get_int(TIMER_MAX_VOLTAGE)
+    local timeout = meta:get_float(TIMER_TIMEOUT)
+    local fs = "field[0,0;2,1;con_max_voltage;Max volt.;" .. max_voltage .. "]" ..
+        "field_close_on_enter[con_max_voltage;false]" ..
+        "field[2,0;2,1;con_timeout;Timeout;" .. timeout .. "]" ..
+        "field_close_on_enter[con_timeout;false]"
+    return fs
+end
+
+
+local function on_receive_fields_timer ( pos, fields )
+    local meta = minetest.get_meta(pos)
+    if fields.con_max_voltage then
+        meta:set_int(TIMER_MAX_VOLTAGE, tonumber(fields.con_max_voltage) or 0)
+    end
+    if fields.con_timeout then
+        meta:set_float(TIMER_TIMEOUT, tonumber(fields.con_timeout) or 0)
+    end
+end
+
+
+wcons.register_controller({
+    name = "wcons:voltage_timer_controller",
+    description = "Timer switch",
+    on_init = on_init_timer,
+    on_activate = on_activate_timer,
+    on_receive_signal = on_receive_signal_timer,
+    on_get_formspec = on_get_formspec_timer,
+    on_receive_fields = on_receive_fields_timer,
+    on_timer = on_timer_timer,
+})

@@ -27,6 +27,7 @@ end
 local CONTROLLERS = {
     "wcons:voltage_switch_controller",
     "wcons:voltage_dimmer_controller",
+    "wcons:voltage_timer_controller",
     "wcons:light_sensor_controller",
     "wcons:blinker_controller",
 }
@@ -136,6 +137,7 @@ minetest.override_item("homedecor:light_switch", {
     after_place_node = after_place_node,
     on_punch = on_punch,
     on_rightclick = on_rightclick,
+    on_timer = wcons.trigger_device_timer,
 })
 
 minetest.register_on_player_receive_fields(on_receive_fields)
