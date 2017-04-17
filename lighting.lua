@@ -51,9 +51,11 @@ local function on_receive_signal ( dev, node, emitter_dev, emitter_node, signal 
     if l < 0 then l = 0
     elseif l > LIGHT_MAX then l = LIGHT_MAX end
     -- DEBUG("voltage: %d/%d -> %d", level, light_def.max_light, l)
-    local new_node = light_def.nodes[l]
-    if node.name ~= new_node then
-        minetest.swap_node(dev.pos, { name=new_node })
+    -- DEBUG("node: %s", dump(node))
+    local new_name = light_def.nodes[l]
+    if node.name ~= new_name then
+        node.name = new_name
+        minetest.swap_node(dev.pos, node)
     end
 end
 
