@@ -280,6 +280,7 @@ for mode, mode_name in pairs(MODE_NAMES) do
     }
     if mode ~= MODE_AUTO then
         def.drop = "wcons:blinker_auto"
+        def.groups.not_in_creative_inventory = 1
     end
     minetest.register_node(name, def)
     table.insert(nodes_list, name)

@@ -90,6 +90,10 @@ wcons.register_light_device = function ( base_node, existing_nodes )
         if not light_def.nodes[i] then
             local name = "wcons:" .. base_name .. "_" .. i            
             local def = table.copy(base_def)
+            if not def.groups then
+                def.groups = {}
+            end
+            def.groups.not_in_creative_inventory = 1
             def.light_source = i
             if def.drop then
                 WARNING("[TODO] overriding %s drop", base_node)
