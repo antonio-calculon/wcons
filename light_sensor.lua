@@ -368,6 +368,7 @@ for mode, mode_name in pairs(MODE_NAMES) do
             fixed = { -0.3, -0.5, -0.3, 0.3, -0.3, 0.3 },
         },
         walkable = false,
+        sunlight_propagates = true,
         after_place_node = after_place_node,
         on_punch = on_punch,
         on_rightclick = on_rightclick,
