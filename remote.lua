@@ -135,9 +135,9 @@ if minetest.get_modpath("homedecor") then
         type = "shaped",
         output = "wcons:remote_1",
         recipe = {
-            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "" },
-            { "homedecor:copper_wire",      "homedecor:ic",               "" },
-            { "homedecor:plastic_sheeting", "homedecor:plastic_sheeting", "" },
+            { "", "homedecor:plastic_sheeting", "" },
+            { "", "homedecor:ic",               "" },
+            { "", "homedecor:plastic_sheeting", "" },
         },
     })
 end
